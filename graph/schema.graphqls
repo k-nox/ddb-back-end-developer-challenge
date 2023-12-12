@@ -5,7 +5,7 @@ type Character {
   currentHitPoints: Int!
   level: Int!
   stats: Stats!
-  defenses: [DefenseType!]!
+  defenses: [Defense!]!
 }
 
 type Stats {
