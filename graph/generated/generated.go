@@ -369,14 +369,19 @@ func (ec *executionContext) introspectType(name string) (*introspection.Type, er
 }
 
 var sources = []*ast.Source{
-	{Name: "../schema.graphqls", Input: `type Character {
+	{Name: "../schema.graphqls", Input: `directive @goTag(
+  key: String!
+  value: String
+) on INPUT_FIELD_DEFINITION | FIELD_DEFINITION
+
+type Character {
   id: ID!
   name: String!
-  maxHitPoints: Int!
+  maxHitPoints: Int! @goTag(key: "json", value: "hitPoints")
   currentHitPoints: Int!
   level: Int!
   stats: Stats!
-  defenses: [DefenseType!]!
+  defenses: [Defense!]!
 }
 
 type Stats {
@@ -389,8 +394,8 @@ type Stats {
 }
 
 type Defense {
-  defenseType: DefenseType!
-  damageType: DamageType!
+  defenseType: DefenseType! @goTag(key: "json", value: "defense")
+  damageType: DamageType! @goTag(key: "json", value: "type")
 }
 
 enum DefenseType {
@@ -861,9 +866,9 @@ func (ec *executionContext) _Character_defenses(ctx context.Context, field graph
 		}
 		return graphql.Null
 	}
-	res := resTmp.([]model.DefenseType)
+	res := resTmp.([]*model.Defense)
 	fc.Result = res
-	return ec.marshalNDefenseType2ᚕgithubᚗcomᚋkᚑnoxᚋddbᚑbackendᚑdeveloperᚑchallengeᚋgraphᚋmodelᚐDefenseTypeᚄ(ctx, field.Selections, res)
+	return ec.marshalNDefense2ᚕᚖgithubᚗcomᚋkᚑnoxᚋddbᚑbackendᚑdeveloperᚑchallengeᚋgraphᚋmodelᚐDefenseᚄ(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) fieldContext_Character_defenses(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
@@ -873,7 +878,13 @@ func (ec *executionContext) fieldContext_Character_defenses(ctx context.Context,
 		IsMethod:   false,
 		IsResolver: false,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return nil, errors.New("field of type DefenseType does not have child fields")
+			switch field.Name {
+			case "defenseType":
+				return ec.fieldContext_Defense_defenseType(ctx, field)
+			case "damageType":
+				return ec.fieldContext_Defense_damageType(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type Defense", field.Name)
 		},
 	}
 	return fc, nil
@@ -4176,34 +4187,7 @@ func (ec *executionContext) marshalNDamageType2githubᚗcomᚋkᚑnoxᚋddbᚑba
 	return v
 }
 
-func (ec *executionContext) unmarshalNDefenseType2githubᚗcomᚋkᚑnoxᚋddbᚑbackendᚑdeveloperᚑchallengeᚋgraphᚋmodelᚐDefenseType(ctx context.Context, v interface{}) (model.DefenseType, error) {
-	var res model.DefenseType
-	err := res.UnmarshalGQL(v)
-	return res, graphql.ErrorOnPath(ctx, err)
-}
-
-func (ec *executionContext) marshalNDefenseType2githubᚗcomᚋkᚑnoxᚋddbᚑbackendᚑdeveloperᚑchallengeᚋgraphᚋmodelᚐDefenseType(ctx context.Context, sel ast.SelectionSet, v model.DefenseType) graphql.Marshaler {
-	return v
-}
-
-func (ec *executionContext) unmarshalNDefenseType2ᚕgithubᚗcomᚋkᚑnoxᚋddbᚑbackendᚑdeveloperᚑchallengeᚋgraphᚋmodelᚐDefenseTypeᚄ(ctx context.Context, v interface{}) ([]model.DefenseType, error) {
-	var vSlice []interface{}
-	if v != nil {
-		vSlice = graphql.CoerceList(v)
-	}
-	var err error
-	res := make([]model.DefenseType, len(vSlice))
-	for i := range vSlice {
-		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithIndex(i))
-		res[i], err = ec.unmarshalNDefenseType2githubᚗcomᚋkᚑnoxᚋddbᚑbackendᚑdeveloperᚑchallengeᚋgraphᚋmodelᚐDefenseType(ctx, vSlice[i])
-		if err != nil {
-			return nil, err
-		}
-	}
-	return res, nil
-}
-
-func (ec *executionContext) marshalNDefenseType2ᚕgithubᚗcomᚋkᚑnoxᚋddbᚑbackendᚑdeveloperᚑchallengeᚋgraphᚋmodelᚐDefenseTypeᚄ(ctx context.Context, sel ast.SelectionSet, v []model.DefenseType) graphql.Marshaler {
+func (ec *executionContext) marshalNDefense2ᚕᚖgithubᚗcomᚋkᚑnoxᚋddbᚑbackendᚑdeveloperᚑchallengeᚋgraphᚋmodelᚐDefenseᚄ(ctx context.Context, sel ast.SelectionSet, v []*model.Defense) graphql.Marshaler {
 	ret := make(graphql.Array, len(v))
 	var wg sync.WaitGroup
 	isLen1 := len(v) == 1
@@ -4227,7 +4211,7 @@ func (ec *executionContext) marshalNDefenseType2ᚕgithubᚗcomᚋkᚑnoxᚋddb�
 			if !isLen1 {
 				defer wg.Done()
 			}
-			ret[i] = ec.marshalNDefenseType2githubᚗcomᚋkᚑnoxᚋddbᚑbackendᚑdeveloperᚑchallengeᚋgraphᚋmodelᚐDefenseType(ctx, sel, v[i])
+			ret[i] = ec.marshalNDefense2ᚖgithubᚗcomᚋkᚑnoxᚋddbᚑbackendᚑdeveloperᚑchallengeᚋgraphᚋmodelᚐDefense(ctx, sel, v[i])
 		}
 		if isLen1 {
 			f(i)
@@ -4245,6 +4229,26 @@ func (ec *executionContext) marshalNDefenseType2ᚕgithubᚗcomᚋkᚑnoxᚋddb�
 	}
 
 	return ret
+}
+
+func (ec *executionContext) marshalNDefense2ᚖgithubᚗcomᚋkᚑnoxᚋddbᚑbackendᚑdeveloperᚑchallengeᚋgraphᚋmodelᚐDefense(ctx context.Context, sel ast.SelectionSet, v *model.Defense) graphql.Marshaler {
+	if v == nil {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			ec.Errorf(ctx, "the requested element is null which the schema does not allow")
+		}
+		return graphql.Null
+	}
+	return ec._Defense(ctx, sel, v)
+}
+
+func (ec *executionContext) unmarshalNDefenseType2githubᚗcomᚋkᚑnoxᚋddbᚑbackendᚑdeveloperᚑchallengeᚋgraphᚋmodelᚐDefenseType(ctx context.Context, v interface{}) (model.DefenseType, error) {
+	var res model.DefenseType
+	err := res.UnmarshalGQL(v)
+	return res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) marshalNDefenseType2githubᚗcomᚋkᚑnoxᚋddbᚑbackendᚑdeveloperᚑchallengeᚋgraphᚋmodelᚐDefenseType(ctx context.Context, sel ast.SelectionSet, v model.DefenseType) graphql.Marshaler {
+	return v
 }
 
 func (ec *executionContext) unmarshalNHealInput2githubᚗcomᚋkᚑnoxᚋddbᚑbackendᚑdeveloperᚑchallengeᚋgraphᚋmodelᚐHealInput(ctx context.Context, v interface{}) (model.HealInput, error) {
