@@ -8,6 +8,7 @@ type Character {
   name: String!
   maxHitPoints: Int! @goTag(key: "json", value: "hitPoints")
   currentHitPoints: Int!
+  temporaryHitPoints: Int
   level: Int!
   stats: Stats!
   defenses: [Defense!]!

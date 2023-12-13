@@ -15,11 +15,13 @@ import (
 
 func TestMutationResolver_DamageCharacter(t *testing.T) {
 	cases := []struct {
-		name              string
-		roll              int
-		damageType        model.DamageType
-		expectedHitPoints int
-		expectedErr       error
+		name                       string
+		roll                       int
+		damageType                 model.DamageType
+		expectedHitPoints          int
+		expectedErr                error
+		currentTemporaryHitPoints  *int
+		expectedTemporaryHitPoints *int
 	}{
 		{
 			name:              "should reject if roll is less than zero",
@@ -52,6 +54,21 @@ func TestMutationResolver_DamageCharacter(t *testing.T) {
 			damageType:        model.DamageTypeBludgeoning,
 			expectedHitPoints: 0,
 		},
+		{
+			name:                       "should correctly apply damage to temporary hit points when character has more than the total damage",
+			roll:                       2,
+			damageType:                 model.DamageTypeNecrotic,
+			expectedHitPoints:          25,
+			currentTemporaryHitPoints:  intToPtr(10),
+			expectedTemporaryHitPoints: intToPtr(8),
+		},
+		{
+			name:                      "should correctly apply damage when character has temporary hit points, but not enough to absorb all damage",
+			roll:                      10,
+			damageType:                model.DamageTypeAcid,
+			expectedHitPoints:         20,
+			currentTemporaryHitPoints: intToPtr(5),
+		},
 	}
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
@@ -64,21 +81,31 @@ func TestMutationResolver_DamageCharacter(t *testing.T) {
 
 			client := client.New(handler.NewDefaultServer(generated.NewExecutableSchema(generated.Config{Resolvers: graph.New(app)})))
 
+			// set current temp hit points
+			err = app.UpdateTemporaryHitPoints(1, c.currentTemporaryHitPoints)
+			require.NoError(t, err)
+
 			var resp struct {
-				DamageCharacter struct{ CurrentHitPoints int }
+				DamageCharacter struct {
+					CurrentHitPoints   int
+					TemporaryHitPoints *int
+				}
 			}
-			query := fmt.Sprintf("mutation { damageCharacter(input: { characterId: 1, damageType: %s, roll: %d }) { currentHitPoints } }", c.damageType.String(), c.roll)
+
+			query := fmt.Sprintf("mutation { damageCharacter(input: { characterId: 1, damageType: %s, roll: %d }) { currentHitPoints, temporaryHitPoints } }", c.damageType.String(), c.roll)
 			err = client.Post(query, &resp)
 			if c.expectedErr != nil {
 				require.Equal(t, c.expectedErr.Error(), err.Error())
 			} else {
 				require.NoError(t, err)
 				require.Equal(t, c.expectedHitPoints, resp.DamageCharacter.CurrentHitPoints)
+				require.Equal(t, c.expectedTemporaryHitPoints, resp.DamageCharacter.TemporaryHitPoints)
 			}
 
 			char, err := app.GetCharacterByID(1)
 			require.NoError(t, err)
 			require.Equal(t, c.expectedHitPoints, char.CurrentHitPoints)
+			require.Equal(t, c.expectedTemporaryHitPoints, char.TemporaryHitPoints)
 		})
 	}
 }
@@ -140,4 +167,73 @@ func TestMutationResolver_HealCharacter(t *testing.T) {
 			require.Equal(t, c.expectedHitPoints, char.CurrentHitPoints)
 		})
 	}
+}
+
+func TestMutationResolver_AddTemporaryHitPoints(t *testing.T) {
+	cases := []struct {
+		name                  string
+		roll                  int
+		currentTempHitPoints  *int
+		expectedTempHitPoints *int
+		expectedErr           error
+	}{
+		{
+			name:                  "should correctly add temporary hit points when none already exist",
+			roll:                  10,
+			expectedTempHitPoints: intToPtr(10),
+		},
+		{
+			name:                  "should correctly replace temporary hit points when temp hit points already exist but are lower",
+			roll:                  10,
+			currentTempHitPoints:  intToPtr(5),
+			expectedTempHitPoints: intToPtr(10),
+		},
+		{
+			name:                  "should not change temporary hit points when temp hit points that are higher already exist",
+			roll:                  10,
+			currentTempHitPoints:  intToPtr(20),
+			expectedTempHitPoints: intToPtr(20),
+		},
+		{
+			name:        "should reject if roll is negative",
+			roll:        -1,
+			expectedErr: errors.New("[{\"message\":\"roll -1 is invalid; must be positive value\",\"path\":[\"addTemporaryHitPoints\"]}]"),
+		},
+	}
+
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			app, err := app.New("file::memory:?cache=shared", "../db/migrations")
+			defer app.CloseDB()
+			require.NoError(t, err)
+			err = app.Startup("../briv.json")
+			require.NoError(t, err)
+
+			// set current temp hit points
+			err = app.UpdateTemporaryHitPoints(1, c.currentTempHitPoints)
+			require.NoError(t, err)
+
+			client := client.New(handler.NewDefaultServer(generated.NewExecutableSchema(generated.Config{Resolvers: graph.New(app)})))
+			query := fmt.Sprintf("mutation { addTemporaryHitPoints(input: { characterId: 1, roll: %d }) { temporaryHitPoints } }", c.roll)
+			var resp struct {
+				AddTemporaryHitPoints struct{ TemporaryHitPoints *int }
+			}
+
+			err = client.Post(query, &resp)
+			if c.expectedErr != nil {
+				require.Equal(t, c.expectedErr.Error(), err.Error())
+			} else {
+				require.NoError(t, err)
+			}
+
+			require.Equal(t, c.expectedTempHitPoints, resp.AddTemporaryHitPoints.TemporaryHitPoints)
+			char, err := app.GetCharacterByID(1)
+			require.NoError(t, err)
+			require.Equal(t, c.expectedTempHitPoints, char.TemporaryHitPoints)
+		})
+	}
+}
+
+func intToPtr(i int) *int {
+	return &i
 }

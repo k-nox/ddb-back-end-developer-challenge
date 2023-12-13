@@ -9,13 +9,14 @@ import (
 )
 
 type Character struct {
-	ID               int        `json:"id"`
-	Name             string     `json:"name"`
-	MaxHitPoints     int        `json:"hitPoints"`
-	CurrentHitPoints int        `json:"currentHitPoints"`
-	Level            int        `json:"level"`
-	Stats            *Stats     `json:"stats"`
-	Defenses         []*Defense `json:"defenses"`
+	ID                 int        `json:"id"`
+	Name               string     `json:"name"`
+	MaxHitPoints       int        `json:"hitPoints"`
+	CurrentHitPoints   int        `json:"currentHitPoints"`
+	TemporaryHitPoints *int       `json:"temporaryHitPoints,omitempty"`
+	Level              int        `json:"level"`
+	Stats              *Stats     `json:"stats"`
+	Defenses           []*Defense `json:"defenses"`
 }
 
 type DamageInput struct {

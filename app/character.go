@@ -18,26 +18,28 @@ var (
 )
 
 type characterRecord struct {
-	ID               int `db:"character_id"`
-	Name             string
-	MaxHitPoints     int
-	CurrentHitPoints int
-	Level            int
-	Strength         int
-	Dexterity        int
-	Constitution     int
-	Wisdom           int
-	Intelligence     int
-	Charisma         int
+	ID                 int `db:"character_id"`
+	Name               string
+	MaxHitPoints       int
+	CurrentHitPoints   int
+	TemporaryHitPoints dbr.NullInt64
+	Level              int
+	Strength           int
+	Dexterity          int
+	Constitution       int
+	Wisdom             int
+	Intelligence       int
+	Charisma           int
 }
 
 func (c characterRecord) toModel() *model.Character {
 	return &model.Character{
-		ID:               c.ID,
-		Name:             c.Name,
-		MaxHitPoints:     c.MaxHitPoints,
-		CurrentHitPoints: c.CurrentHitPoints,
-		Level:            c.Level,
+		ID:                 c.ID,
+		Name:               c.Name,
+		MaxHitPoints:       c.MaxHitPoints,
+		CurrentHitPoints:   c.CurrentHitPoints,
+		TemporaryHitPoints: nullInt64ToPtr(c.TemporaryHitPoints),
+		Level:              c.Level,
 		Stats: &model.Stats{
 			Strength:     c.Strength,
 			Dexterity:    c.Dexterity,
@@ -110,7 +112,26 @@ func (a *App) UpdateHitPoints(id int, newHitPoints int) error {
 	_, err := sess.Update(characterTable).Set("current_hit_points", newHitPoints).Where("character_id = ?", id).Exec()
 	if err != nil {
 		log.Printf("error attempting to update char hitpoints for char id %d: %s", id, err.Error())
-		return err
+		return UnexpectedDBError
+	}
+	return nil
+}
+
+func (a *App) UpdateTemporaryHitPoints(id int, newTempHitPoints *int) error {
+	sess := a.db.NewSession(nil)
+	_, err := sess.Update(characterTable).Set("temporary_hit_points", newTempHitPoints).Where("character_id = ?", id).Exec()
+	if err != nil {
+		log.Printf("error attempting to update char temp hit points for char id %d: %s", id, err.Error())
+		return UnexpectedDBError
+	}
+
+	return nil
+}
+
+func nullInt64ToPtr(i dbr.NullInt64) *int {
+	if i.Valid && i.Int64 != 0 {
+		out := int(i.Int64)
+		return &out
 	}
 	return nil
 }

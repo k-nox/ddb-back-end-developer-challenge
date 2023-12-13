@@ -6,11 +6,11 @@ package graph
 
 import (
 	"context"
-	"fmt"
+	"math"
+
 	"github.com/k-nox/ddb-backend-developer-challenge/graph/generated"
 	"github.com/k-nox/ddb-backend-developer-challenge/graph/model"
 	"github.com/vektah/gqlparser/v2/gqlerror"
-	"math"
 )
 
 // DamageCharacter is the resolver for the damageCharacter field.
@@ -23,6 +23,7 @@ func (r *mutationResolver) DamageCharacter(ctx context.Context, input model.Dama
 		return nil, err
 	}
 
+	// consider defenses and vulnerabilities which can change damage
 	multiplier := 1.0
 	for _, defense := range char.Defenses {
 		if defense.DamageType == input.DamageType {
@@ -34,8 +35,31 @@ func (r *mutationResolver) DamageCharacter(ctx context.Context, input model.Dama
 		}
 	}
 
+	// always round down
 	totalDamage := int(math.Round(multiplier * float64(input.Roll)))
 
+	// first apply temp hit points
+	if char.TemporaryHitPoints != nil {
+		newTempHitPoints := *char.TemporaryHitPoints - totalDamage
+		if newTempHitPoints > 0 {
+			// total damage was absorbed by temporary hit points entirely
+			err = r.app.UpdateTemporaryHitPoints(char.ID, &newTempHitPoints)
+			if err != nil {
+				return nil, err
+			}
+			char.TemporaryHitPoints = &newTempHitPoints
+			return char, nil
+		}
+		// otherwise, all temporary hit points have been used
+		totalDamage = totalDamage - *char.TemporaryHitPoints
+		err = r.app.UpdateTemporaryHitPoints(char.ID, nil)
+		if err != nil {
+			return nil, err
+		}
+		char.TemporaryHitPoints = nil
+	}
+
+	// no negative hit points
 	if totalDamage > char.CurrentHitPoints {
 		totalDamage = char.CurrentHitPoints
 	}
@@ -78,7 +102,29 @@ func (r *mutationResolver) HealCharacter(ctx context.Context, input model.HealIn
 
 // AddTemporaryHitPoints is the resolver for the addTemporaryHitPoints field.
 func (r *mutationResolver) AddTemporaryHitPoints(ctx context.Context, input model.HealInput) (*model.Character, error) {
-	panic(fmt.Errorf("not implemented: AddTemporaryHitPoints - addTemporaryHitPoints"))
+	if input.Roll <= 0 {
+		return nil, gqlerror.Errorf("roll %d is invalid; must be positive value", input.Roll)
+	}
+	char, err := r.Query().Character(ctx, input.CharacterID)
+	if err != nil {
+		return nil, err
+	}
+
+	if char.TemporaryHitPoints != nil && *char.TemporaryHitPoints > input.Roll {
+		// current temporary hit points are higher, no action required
+		return char, nil
+	}
+
+	newTempHitPoints := &input.Roll
+
+	err = r.app.UpdateTemporaryHitPoints(input.CharacterID, newTempHitPoints)
+	if err != nil {
+		return nil, err
+	}
+
+	char.TemporaryHitPoints = newTempHitPoints
+
+	return char, nil
 }
 
 // Character is the resolver for the character field.
