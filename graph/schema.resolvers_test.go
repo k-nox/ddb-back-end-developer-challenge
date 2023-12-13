@@ -15,11 +15,13 @@ import (
 
 func TestMutationResolver_DamageCharacter(t *testing.T) {
 	cases := []struct {
-		name              string
-		roll              int
-		damageType        model.DamageType
-		expectedHitPoints int
-		expectedErr       error
+		name                       string
+		roll                       int
+		damageType                 model.DamageType
+		expectedHitPoints          int
+		expectedErr                error
+		currentTemporaryHitPoints  *int
+		expectedTemporaryHitPoints *int
 	}{
 		{
 			name:              "should reject if roll is less than zero",
@@ -52,6 +54,21 @@ func TestMutationResolver_DamageCharacter(t *testing.T) {
 			damageType:        model.DamageTypeBludgeoning,
 			expectedHitPoints: 0,
 		},
+		{
+			name:                       "should correctly apply damage to temporary hit points when character has more than the total damage",
+			roll:                       2,
+			damageType:                 model.DamageTypeNecrotic,
+			expectedHitPoints:          25,
+			currentTemporaryHitPoints:  intToPtr(10),
+			expectedTemporaryHitPoints: intToPtr(8),
+		},
+		{
+			name:                      "should correctly apply damage when character has temporary hit points, but not enough to absorb all damage",
+			roll:                      10,
+			damageType:                model.DamageTypeAcid,
+			expectedHitPoints:         20,
+			currentTemporaryHitPoints: intToPtr(5),
+		},
 	}
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
@@ -64,21 +81,31 @@ func TestMutationResolver_DamageCharacter(t *testing.T) {
 
 			client := client.New(handler.NewDefaultServer(generated.NewExecutableSchema(generated.Config{Resolvers: graph.New(app)})))
 
+			// set current temp hit points
+			err = app.UpdateTemporaryHitPoints(1, c.currentTemporaryHitPoints)
+			require.NoError(t, err)
+
 			var resp struct {
-				DamageCharacter struct{ CurrentHitPoints int }
+				DamageCharacter struct {
+					CurrentHitPoints   int
+					TemporaryHitPoints *int
+				}
 			}
-			query := fmt.Sprintf("mutation { damageCharacter(input: { characterId: 1, damageType: %s, roll: %d }) { currentHitPoints } }", c.damageType.String(), c.roll)
+
+			query := fmt.Sprintf("mutation { damageCharacter(input: { characterId: 1, damageType: %s, roll: %d }) { currentHitPoints, temporaryHitPoints } }", c.damageType.String(), c.roll)
 			err = client.Post(query, &resp)
 			if c.expectedErr != nil {
 				require.Equal(t, c.expectedErr.Error(), err.Error())
 			} else {
 				require.NoError(t, err)
 				require.Equal(t, c.expectedHitPoints, resp.DamageCharacter.CurrentHitPoints)
+				require.Equal(t, c.expectedTemporaryHitPoints, resp.DamageCharacter.TemporaryHitPoints)
 			}
 
 			char, err := app.GetCharacterByID(1)
 			require.NoError(t, err)
 			require.Equal(t, c.expectedHitPoints, char.CurrentHitPoints)
+			require.Equal(t, c.expectedTemporaryHitPoints, char.TemporaryHitPoints)
 		})
 	}
 }

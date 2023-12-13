@@ -23,6 +23,7 @@ func (r *mutationResolver) DamageCharacter(ctx context.Context, input model.Dama
 		return nil, err
 	}
 
+	// consider defenses and vulnerabilities which can change damage
 	multiplier := 1.0
 	for _, defense := range char.Defenses {
 		if defense.DamageType == input.DamageType {
@@ -34,8 +35,31 @@ func (r *mutationResolver) DamageCharacter(ctx context.Context, input model.Dama
 		}
 	}
 
+	// always round down
 	totalDamage := int(math.Round(multiplier * float64(input.Roll)))
 
+	// first apply temp hit points
+	if char.TemporaryHitPoints != nil {
+		newTempHitPoints := *char.TemporaryHitPoints - totalDamage
+		if newTempHitPoints > 0 {
+			// total damage was absorbed by temporary hit points entirely
+			err = r.app.UpdateTemporaryHitPoints(char.ID, &newTempHitPoints)
+			if err != nil {
+				return nil, err
+			}
+			char.TemporaryHitPoints = &newTempHitPoints
+			return char, nil
+		}
+		// otherwise, all temporary hit points have been used
+		totalDamage = totalDamage - *char.TemporaryHitPoints
+		err = r.app.UpdateTemporaryHitPoints(char.ID, nil)
+		if err != nil {
+			return nil, err
+		}
+		char.TemporaryHitPoints = nil
+	}
+
+	// no negative hit points
 	if totalDamage > char.CurrentHitPoints {
 		totalDamage = char.CurrentHitPoints
 	}
