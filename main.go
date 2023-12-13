@@ -26,6 +26,11 @@ func main() {
 		port = defaultPort
 	}
 
+	err = app.Startup("briv.json")
+	if err != nil {
+		log.Fatalf("Startup failed: %s", err.Error())
+	}
+
 	srv := handler.NewDefaultServer(generated.NewExecutableSchema(generated.Config{Resolvers: graph.New(app)}))
 	http.Handle("/", playground.Handler("GraphQL Playground", "/query"))
 	http.Handle("/query", srv)
