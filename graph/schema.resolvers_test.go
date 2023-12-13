@@ -19,7 +19,15 @@ func TestMutationResolver_DamageCharacter(t *testing.T) {
 		roll              int
 		damageType        model.DamageType
 		expectedHitPoints int
+		expectedErr       error
 	}{
+		{
+			name:              "should reject if roll is less than zero",
+			roll:              -1,
+			damageType:        model.DamageTypeThunder,
+			expectedHitPoints: 25,
+			expectedErr:       errors.New("[{\"message\":\"roll -1 is invalid; must be positive value\",\"path\":[\"damageCharacter\"]}]"),
+		},
 		{
 			name:              "should correctly apply damage when character has no resistances",
 			roll:              2,
@@ -60,8 +68,13 @@ func TestMutationResolver_DamageCharacter(t *testing.T) {
 				DamageCharacter struct{ CurrentHitPoints int }
 			}
 			query := fmt.Sprintf("mutation { damageCharacter(input: { characterId: 1, damageType: %s, roll: %d }) { currentHitPoints } }", c.damageType.String(), c.roll)
-			client.MustPost(query, &resp)
-			require.Equal(t, c.expectedHitPoints, resp.DamageCharacter.CurrentHitPoints)
+			err = client.Post(query, &resp)
+			if c.expectedErr != nil {
+				require.Equal(t, c.expectedErr.Error(), err.Error())
+			} else {
+				require.NoError(t, err)
+				require.Equal(t, c.expectedHitPoints, resp.DamageCharacter.CurrentHitPoints)
+			}
 
 			char, err := app.GetCharacterByID(1)
 			require.NoError(t, err)

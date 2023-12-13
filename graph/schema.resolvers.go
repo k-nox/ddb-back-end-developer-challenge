@@ -15,6 +15,9 @@ import (
 
 // DamageCharacter is the resolver for the damageCharacter field.
 func (r *mutationResolver) DamageCharacter(ctx context.Context, input model.DamageInput) (*model.Character, error) {
+	if input.Roll <= 0 {
+		return nil, gqlerror.Errorf("roll %d is invalid; must be positive value", input.Roll)
+	}
 	char, err := r.Query().Character(ctx, input.CharacterID)
 	if err != nil {
 		return nil, err
