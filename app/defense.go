@@ -2,17 +2,22 @@ package app
 
 import (
 	"errors"
+	"github.com/gocraft/dbr/v2"
 	"github.com/k-nox/ddb-backend-developer-challenge/graph/model"
 	"log"
 	"strings"
 )
 
 var (
-	InvalidDefenseError    = errors.New("cannot insert invalid defense")
-	characterDefenseFields = []string{"character_id", "damage_type", "defense_type"}
+	InvalidDefenseError      = errors.New("cannot insert invalid defense")
+	DefenseTypeNotFoundError = errors.New("requested defense type not found")
+	characterDefenseFields   = []string{"character_id", "damage_type", "defense_type"}
 )
 
-const characterDefenseTable = "character_defense"
+const (
+	characterDefenseTable = "character_defense"
+	defenseTypeTable      = "defense_type"
+)
 
 type characterDefenseRecord struct {
 	ID          int `db:"character_defense_id"`
@@ -67,4 +72,22 @@ func (a *App) GetCharacterDefenses(characterID int) ([]*model.Defense, error) {
 	}
 
 	return models, err
+}
+
+func (a *App) GetDefenseTypeModifier(defenseType model.DefenseType) (float64, error) {
+	sess := a.db.NewSession(nil)
+
+	defenseTypeStr := strings.ToLower(defenseType.String())
+	var modifier float64
+	err := sess.Select("modifier").From(defenseTypeTable).Where("type = ?", defenseTypeStr).LoadOne(&modifier)
+	if err == nil {
+		return modifier, nil
+	}
+
+	if errors.Is(err, dbr.ErrNotFound) {
+		return 1, DefenseTypeNotFoundError
+	}
+
+	log.Printf("error attempting to find defense type %s: %s", defenseTypeStr, err.Error())
+	return 1, UnexpectedDBError
 }
