@@ -67,7 +67,7 @@ func (a *App) InsertCharacter(char *model.Character) error {
 		return InvalidCharError
 	}
 	sess := a.db.NewSession(nil)
-	res, err := sess.InsertInto(characterTable).
+	_, err := sess.InsertInto(characterTable).
 		Pair("name", char.Name).
 		Pair("max_hit_points", char.MaxHitPoints).
 		Pair("current_hit_points", char.CurrentHitPoints).
@@ -83,6 +83,5 @@ func (a *App) InsertCharacter(char *model.Character) error {
 		log.Printf("error attempting to insert character with name %s: %s", char.Name, err.Error())
 		return UnexpectedDBError
 	}
-	log.Println(res)
 	return nil
 }
