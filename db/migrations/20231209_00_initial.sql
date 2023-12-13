@@ -9,22 +9,22 @@ create table defense_type(
 );
 
 create table character(
-    character_id int primary key not null,
-    name text not null,
-    max_hit_points int not null,
-    current_hit_points int not null,
-    level int not null,
-    strength int not null,
-    dexterity int not null,
-    constitution int not null,
-    intelligence int not null,
-    wisdom int not null,
-    charisma int not null
+    character_id integer primary key autoincrement,
+    name text not null unique,
+    max_hit_points integer not null,
+    current_hit_points integer not null,
+    level integer not null,
+    strength integer not null,
+    dexterity integer not null,
+    constitution integer not null,
+    intelligence integer not null,
+    wisdom integer not null,
+    charisma integer not null
 );
 
 create table character_defense(
-    character_defense_id int primary key not null,
-    character_id int not null,
+    character_defense_id integer primary key autoincrement,
+    character_id integer not null,
     damage_type text not null,
     defense_type text not null,
     foreign key(character_id) references character(character_id),

@@ -1,14 +1,12 @@
 package main
 
 import (
-	"database/sql"
 	"fmt"
 	"github.com/99designs/gqlgen/graphql/handler"
 	"github.com/99designs/gqlgen/graphql/playground"
+	"github.com/k-nox/ddb-backend-developer-challenge/app"
 	"github.com/k-nox/ddb-backend-developer-challenge/graph"
 	"github.com/k-nox/ddb-backend-developer-challenge/graph/generated"
-	_ "github.com/mattn/go-sqlite3"
-	migrate "github.com/rubenv/sql-migrate"
 	"log"
 	"net/http"
 	"os"
@@ -17,35 +15,23 @@ import (
 const defaultPort = "8080"
 
 func main() {
-	migrations := &migrate.FileMigrationSource{
-		Dir: "db/migrations",
-	}
-
-	// start up database connection
-	db, err := sql.Open("sqlite3", "db/data.db")
+	// setup the app & db
+	app, err := app.New("db/data.db", "db/migrations")
 	if err != nil {
-		log.Fatalf("error opening sqlite3: %s\n", err.Error())
+		log.Fatal(err)
 	}
-	defer func(db *sql.DB) {
-		err := db.Close()
-		if err != nil {
-			log.Fatalf("db could not be closed: %s\n", err.Error())
-		}
-	}(db)
-
-	// apply any new migrations
-	n, err := migrate.Exec(db, "sqlite3", migrations, migrate.Up)
-	if err != nil {
-		log.Fatalf("error applying migrations: %s", err.Error())
-	}
-	log.Printf("Applied %d migrations!\n", n)
-
+	defer app.CloseDB()
 	port := os.Getenv("PORT")
 	if port == "" {
 		port = defaultPort
 	}
 
-	srv := handler.NewDefaultServer(generated.NewExecutableSchema(generated.Config{Resolvers: &graph.Resolver{}}))
+	err = app.Startup("briv.json")
+	if err != nil {
+		log.Fatalf("Startup failed: %s", err.Error())
+	}
+
+	srv := handler.NewDefaultServer(generated.NewExecutableSchema(generated.Config{Resolvers: graph.New(app)}))
 	http.Handle("/", playground.Handler("GraphQL Playground", "/query"))
 	http.Handle("/query", srv)
 
