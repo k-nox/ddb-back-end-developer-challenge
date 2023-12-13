@@ -7,7 +7,6 @@ package graph
 import (
 	"context"
 	"fmt"
-
 	"github.com/k-nox/ddb-backend-developer-challenge/graph/generated"
 	"github.com/k-nox/ddb-backend-developer-challenge/graph/model"
 )
@@ -29,7 +28,17 @@ func (r *mutationResolver) AddTemporaryHitPoints(ctx context.Context, input mode
 
 // Character is the resolver for the character field.
 func (r *queryResolver) Character(ctx context.Context, id int) (*model.Character, error) {
-	panic(fmt.Errorf("not implemented: Character - character"))
+	char, err := r.app.GetCharacterByID(id)
+	if err != nil {
+		return nil, err
+	}
+	defenses, err := r.app.GetCharacterDefenses(id)
+	if err != nil {
+		return nil, err
+	}
+
+	char.Defenses = defenses
+	return char, nil
 }
 
 // Mutation returns generated.MutationResolver implementation.
