@@ -1,5 +1,7 @@
 package graph
 
+//go:generate go run github.com/99designs/gqlgen generate
+
 import "github.com/k-nox/ddb-backend-developer-challenge/app"
 
 // This file will not be regenerated automatically.
