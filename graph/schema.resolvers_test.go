@@ -141,3 +141,72 @@ func TestMutationResolver_HealCharacter(t *testing.T) {
 		})
 	}
 }
+
+func TestMutationResolver_AddTemporaryHitPoints(t *testing.T) {
+	cases := []struct {
+		name                  string
+		roll                  int
+		currentTempHitPoints  *int
+		expectedTempHitPoints *int
+		expectedErr           error
+	}{
+		{
+			name:                  "should correctly add temporary hit points when none already exist",
+			roll:                  10,
+			expectedTempHitPoints: intToPtr(10),
+		},
+		{
+			name:                  "should correctly replace temporary hit points when temp hit points already exist but are lower",
+			roll:                  10,
+			currentTempHitPoints:  intToPtr(5),
+			expectedTempHitPoints: intToPtr(10),
+		},
+		{
+			name:                  "should not change temporary hit points when temp hit points that are higher already exist",
+			roll:                  10,
+			currentTempHitPoints:  intToPtr(20),
+			expectedTempHitPoints: intToPtr(20),
+		},
+		{
+			name:        "should reject if roll is negative",
+			roll:        -1,
+			expectedErr: errors.New("[{\"message\":\"roll -1 is invalid; must be positive value\",\"path\":[\"addTemporaryHitPoints\"]}]"),
+		},
+	}
+
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			app, err := app.New("file::memory:?cache=shared", "../db/migrations")
+			defer app.CloseDB()
+			require.NoError(t, err)
+			err = app.Startup("../briv.json")
+			require.NoError(t, err)
+
+			// set current temp hit points
+			err = app.UpdateTemporaryHitPoints(1, c.currentTempHitPoints)
+			require.NoError(t, err)
+
+			client := client.New(handler.NewDefaultServer(generated.NewExecutableSchema(generated.Config{Resolvers: graph.New(app)})))
+			query := fmt.Sprintf("mutation { addTemporaryHitPoints(input: { characterId: 1, roll: %d }) { temporaryHitPoints } }", c.roll)
+			var resp struct {
+				AddTemporaryHitPoints struct{ TemporaryHitPoints *int }
+			}
+
+			err = client.Post(query, &resp)
+			if c.expectedErr != nil {
+				require.Equal(t, c.expectedErr.Error(), err.Error())
+			} else {
+				require.NoError(t, err)
+			}
+
+			require.Equal(t, c.expectedTempHitPoints, resp.AddTemporaryHitPoints.TemporaryHitPoints)
+			char, err := app.GetCharacterByID(1)
+			require.NoError(t, err)
+			require.Equal(t, c.expectedTempHitPoints, char.TemporaryHitPoints)
+		})
+	}
+}
+
+func intToPtr(i int) *int {
+	return &i
+}
