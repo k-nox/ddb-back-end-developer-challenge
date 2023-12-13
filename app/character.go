@@ -87,3 +87,30 @@ func (a *App) InsertCharacter(char *model.Character) (*model.Character, error) {
 	}
 	return record.toModel(), nil
 }
+
+func (a *App) GetCharacterByID(id int) (*model.Character, error) {
+	var record characterRecord
+	sess := a.db.NewSession(nil)
+
+	err := sess.Select("*").From(characterTable).Where("character_id = ?", id).LoadOne(&record)
+	if err == nil {
+		return record.toModel(), nil
+	}
+
+	if errors.Is(err, dbr.ErrNotFound) {
+		return nil, CharNotFoundError
+	}
+
+	log.Printf("error attempting to select char by id %d: %s", id, err.Error())
+	return nil, UnexpectedDBError
+}
+
+func (a *App) UpdateHitPoints(id int, newHitPoints int) error {
+	sess := a.db.NewSession(nil)
+	_, err := sess.Update(characterTable).Set("current_hit_points", newHitPoints).Where("character_id = ?", id).Exec()
+	if err != nil {
+		log.Printf("error attempting to update char hitpoints for char id %d: %s", id, err.Error())
+		return err
+	}
+	return nil
+}
