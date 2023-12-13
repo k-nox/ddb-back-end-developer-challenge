@@ -58,10 +58,20 @@ func (a *App) Startup(startingCharPath string) error {
 	if err != nil && !errors.Is(err, CharNotFoundError) {
 		return err
 	}
-	err = a.InsertCharacter(char)
+
+	inserted, err := a.InsertCharacter(char)
 	if err != nil {
 		log.Fatalf("unable to insert starting character: %s", err.Error())
 		return err
 	}
+
+	for _, defense := range char.Defenses {
+		err := a.InsertCharacterDefense(inserted.ID, defense)
+		if err != nil {
+			log.Fatalf("unable to insert starting character's defenses: %s", err.Error())
+			return err
+		}
+	}
+
 	return nil
 }

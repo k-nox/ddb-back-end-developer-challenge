@@ -53,7 +53,7 @@ func TestApp_InsertCharacter(t *testing.T) {
 			require.Zero(t, count)
 
 			// now insert the character
-			insertErr := a.InsertCharacter(c.in)
+			out, insertErr := a.InsertCharacter(c.in)
 
 			// select all rows in table now
 			var records []characterRecord
@@ -64,14 +64,17 @@ func TestApp_InsertCharacter(t *testing.T) {
 				require.ErrorIs(t, c.expectedErr, insertErr)
 				require.Zero(t, n)
 				require.Empty(t, records)
+				require.Nil(t, out)
 			} else {
 				require.NoError(t, insertErr)
 				// should only have inserted 1 row
 				require.EqualValues(t, 1, n)
 				require.NotEmpty(t, records)
-				require.NotZero(t, records[0].Id)
-				records[0].Id = 0
-				require.Equal(t, c.in, records[0].toModel())
+				// returned model should match record
+				require.Equal(t, out, records[0].toModel())
+				out.ID = 0
+				// returned model should equal inserted model, other than id
+				require.Equal(t, out, c.in)
 			}
 		})
 	}
@@ -136,7 +139,7 @@ func TestApp_GetCharacterByName(t *testing.T) {
 			require.Zero(t, count)
 
 			// setup
-			insertErr := a.InsertCharacter(c.toInsert)
+			_, insertErr := a.InsertCharacter(c.toInsert)
 			require.NoError(t, insertErr)
 
 			out, outErr := a.GetCharacterByName(c.charName)

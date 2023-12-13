@@ -14,10 +14,11 @@ const (
 var (
 	CharNotFoundError = errors.New("no character found")
 	InvalidCharError  = errors.New("cannot insert invalid character")
+	characterFields   = []string{"name", "max_hit_points", "current_hit_points", "level", "strength", "dexterity", "constitution", "intelligence", "wisdom", "charisma"}
 )
 
 type characterRecord struct {
-	Id               int `db:"character_id"`
+	ID               int `db:"character_id"`
 	Name             string
 	MaxHitPoints     int
 	CurrentHitPoints int
@@ -32,7 +33,7 @@ type characterRecord struct {
 
 func (c characterRecord) toModel() *model.Character {
 	return &model.Character{
-		ID:               c.Id,
+		ID:               c.ID,
 		Name:             c.Name,
 		MaxHitPoints:     c.MaxHitPoints,
 		CurrentHitPoints: c.CurrentHitPoints,
@@ -62,27 +63,27 @@ func (a *App) GetCharacterByName(name string) (*model.Character, error) {
 	return nil, UnexpectedDBError
 }
 
-func (a *App) InsertCharacter(char *model.Character) error {
+func (a *App) InsertCharacter(char *model.Character) (*model.Character, error) {
 	if char == nil || char.Stats == nil {
-		return InvalidCharError
+		return nil, InvalidCharError
 	}
 	sess := a.db.NewSession(nil)
-	res, err := sess.InsertInto(characterTable).
-		Pair("name", char.Name).
-		Pair("max_hit_points", char.MaxHitPoints).
-		Pair("current_hit_points", char.CurrentHitPoints).
-		Pair("level", char.Level).
-		Pair("strength", char.Stats.Strength).
-		Pair("dexterity", char.Stats.Dexterity).
-		Pair("constitution", char.Stats.Constitution).
-		Pair("intelligence", char.Stats.Intelligence).
-		Pair("wisdom", char.Stats.Wisdom).
-		Pair("charisma", char.Stats.Charisma).
-		Exec()
+	record := characterRecord{
+		Name:             char.Name,
+		MaxHitPoints:     char.MaxHitPoints,
+		CurrentHitPoints: char.CurrentHitPoints,
+		Level:            char.Level,
+		Strength:         char.Stats.Strength,
+		Dexterity:        char.Stats.Dexterity,
+		Constitution:     char.Stats.Constitution,
+		Wisdom:           char.Stats.Wisdom,
+		Intelligence:     char.Stats.Intelligence,
+		Charisma:         char.Stats.Charisma,
+	}
+	err := sess.InsertInto(characterTable).Columns(characterFields...).Record(&record).Returning("character_id").Load(&record.ID)
 	if err != nil {
 		log.Printf("error attempting to insert character with name %s: %s", char.Name, err.Error())
-		return UnexpectedDBError
+		return nil, UnexpectedDBError
 	}
-	log.Println(res)
-	return nil
+	return record.toModel(), nil
 }
