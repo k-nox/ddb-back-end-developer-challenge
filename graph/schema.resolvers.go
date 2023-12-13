@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"github.com/k-nox/ddb-backend-developer-challenge/graph/generated"
 	"github.com/k-nox/ddb-backend-developer-challenge/graph/model"
+	"github.com/vektah/gqlparser/v2/gqlerror"
 	"math"
 )
 
@@ -49,7 +50,27 @@ func (r *mutationResolver) DamageCharacter(ctx context.Context, input model.Dama
 
 // HealCharacter is the resolver for the healCharacter field.
 func (r *mutationResolver) HealCharacter(ctx context.Context, input model.HealInput) (*model.Character, error) {
-	panic(fmt.Errorf("not implemented: HealCharacter - healCharacter"))
+	if input.Roll <= 0 {
+		return nil, gqlerror.Errorf("roll %d is invalid; must be positive value", input.Roll)
+	}
+
+	char, err := r.Query().Character(ctx, input.CharacterID)
+	if err != nil {
+		return nil, err
+	}
+
+	newHitPoints := char.CurrentHitPoints + input.Roll
+	if newHitPoints > char.MaxHitPoints {
+		newHitPoints = char.MaxHitPoints
+	}
+
+	err = r.app.UpdateHitPoints(char.ID, newHitPoints)
+	if err != nil {
+		return nil, err
+	}
+
+	char.CurrentHitPoints = newHitPoints
+	return char, nil
 }
 
 // AddTemporaryHitPoints is the resolver for the addTemporaryHitPoints field.
