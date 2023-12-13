@@ -58,7 +58,7 @@ func (a *App) Startup(startingCharPath string) error {
 	if err != nil && !errors.Is(err, CharNotFoundError) {
 		return err
 	}
-	err = a.InsertCharacter(char)
+	_, err = a.InsertCharacter(char)
 	if err != nil {
 		log.Fatalf("unable to insert starting character: %s", err.Error())
 		return err
