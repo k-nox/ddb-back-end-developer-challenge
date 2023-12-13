@@ -16,7 +16,7 @@ const defaultPort = "8080"
 
 func main() {
 	// setup the app & db
-	app, err := app.New()
+	app, err := app.New("db/data.db", "db/migrations")
 	if err != nil {
 		log.Fatal(err)
 	}

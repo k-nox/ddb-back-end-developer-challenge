@@ -8,15 +8,15 @@ type App struct {
 	db *dbr.Connection
 }
 
-func New() (*App, error) {
+func New(dsn string, migrationsPath string) (*App, error) {
 	// open db connection
-	conn, err := openDB("db/data.db")
+	conn, err := openDB(dsn)
 	if err != nil {
 		return nil, err
 	}
 
 	// apply any migrations
-	err = applyMigrations("db/migrations", conn.DB)
+	err = applyMigrations(migrationsPath, conn.DB)
 	if err != nil {
 		return nil, err
 	}
