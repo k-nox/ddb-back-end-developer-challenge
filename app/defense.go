@@ -19,6 +19,7 @@ const (
 	defenseTypeTable      = "defense_type"
 )
 
+// characterDefenseRecord is used for binding to & from the character_defense table records.
 type characterDefenseRecord struct {
 	ID          int `db:"character_defense_id"`
 	CharacterID int `db:"character_id"`
@@ -26,6 +27,7 @@ type characterDefenseRecord struct {
 	DefenseType string
 }
 
+// toModel will convert a characterDefenseRecord to a gqlgen-generated *model.Defense type.
 func (c *characterDefenseRecord) toModel() *model.Defense {
 	return &model.Defense{
 		DefenseType: model.DefenseType(strings.ToUpper(c.DefenseType)),
@@ -33,6 +35,8 @@ func (c *characterDefenseRecord) toModel() *model.Defense {
 	}
 }
 
+// InsertCharacterDefense will insert a new character_defense record linked to the provided character id.
+// Since the generated defense type and damage type are in uppercase, they will be converted to lower case for db insertion.
 func (a *App) InsertCharacterDefense(characterID int, defense *model.Defense) error {
 	if defense == nil {
 		return InvalidDefenseError
@@ -56,6 +60,7 @@ func (a *App) InsertCharacterDefense(characterID int, defense *model.Defense) er
 	return nil
 }
 
+// GetCharacterDefenses returns a list of all the defenses that apply to the provided character id.
 func (a *App) GetCharacterDefenses(characterID int) ([]*model.Defense, error) {
 	sess := a.db.NewSession(nil)
 	var records []characterDefenseRecord
@@ -74,6 +79,8 @@ func (a *App) GetCharacterDefenses(characterID int) ([]*model.Defense, error) {
 	return models, err
 }
 
+// GetDefenseTypeModifier will return a float64 that can be used to as a multiplicative damage modifier for the defense's damage type.
+// Immunity = 0, Vulnerability = 2, Resistance = 0.5.
 func (a *App) GetDefenseTypeModifier(defenseType model.DefenseType) (float64, error) {
 	sess := a.db.NewSession(nil)
 

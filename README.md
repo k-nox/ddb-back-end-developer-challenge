@@ -62,10 +62,186 @@ If you have any questions or require clarification, please reach out to your Wiz
 
 Good luck with the implementation!
 
-## Requirements to Build
+## Implementation Notes
+
+### To run the server
 1. Go 1.21.1 or greater must be installed
    - on macOS: `brew install go`
 2. SQLite3 must be installed
    - on macOS: `brew install sqlite3`
 3. `CGO_ENABLED=1` must be set in the environment
 4. A gcc compiler must be installed
+5. To run the server:
+   - `make run`
+   - this will install all dependencies, compile the binary, and start the server 
+6. Go to http://localhost:8080/ to get the GraphQL playground - see below for example queries
+
+### To run all tests
+`make test` will install all test dependencies and run all tests
+
+### Example Queries
+
+The GraphQL playground should have autocomplete to help with discovery (try `<ctrl>+<space>`).
+You can also view the GraphQL schema directly at `graph/schema/schema.graphqls`.
+
+#### Get Character By Name
+```graphql
+query {
+    characterByName(name: "Briv") {
+       id,
+       name,
+       currentHitPoints,
+       maxHitPoints,
+       temporaryHitPoints,
+       level,
+       stats {
+          charisma,
+          constitution,
+          wisdom,
+          dexterity,
+          intelligence,
+          strength
+       }
+       defenses {
+          damageType
+          defenseType
+       },
+    }
+}
+```
+
+returns by default:
+```json
+{
+   "data": {
+      "characterByName": {
+         "id": "1",
+         "name": "Briv",
+         "currentHitPoints": 25,
+         "maxHitPoints": 25,
+         "temporaryHitPoints": null,
+         "level": 5,
+         "stats": {
+            "charisma": 8,
+            "constitution": 14,
+            "wisdom": 10,
+            "dexterity": 12,
+            "intelligence": 13,
+            "strength": 15
+         },
+         "defenses": [
+            {
+               "damageType": "FIRE",
+               "defenseType": "IMMUNITY"
+            },
+            {
+               "damageType": "SLASHING",
+               "defenseType": "RESISTANCE"
+            }
+         ]
+      }
+   }
+}
+```
+
+Note: All of the queries and mutations return a character object, and you can request any combination of the fields on that object.
+For simplicity, the following examples will only include a subset of fields.
+
+#### Get Character By ID
+```graphql
+query {
+  character(id: 1) {
+    name
+  }
+}
+```
+
+returns:
+```json
+{
+  "data": {
+    "character": {
+      "name": "Briv"
+    }
+  }
+}
+```
+
+#### Damage Character
+```graphql
+mutation {
+   damageCharacter(input: {characterId: 1, damageType: BLUDGEONING, roll: 12}) {
+      name
+      currentHitPoints
+      maxHitPoints
+      temporaryHitPoints
+   }
+}
+```
+
+returns:
+```json
+{
+  "data": {
+    "damageCharacter": {
+      "name": "Briv",
+      "currentHitPoints": 13,
+      "maxHitPoints": 25,
+      "temporaryHitPoints": null
+    }
+  }
+}
+```
+
+#### Heal Character
+```graphql
+mutation {
+  healCharacter(input: {characterId: 1, roll: 5}) {
+    name,
+    currentHitPoints,
+    maxHitPoints,
+    temporaryHitPoints
+  }
+}
+```
+
+returns:
+```json
+{
+  "data": {
+    "healCharacter": {
+      "name": "Briv",
+      "currentHitPoints": 18,
+      "maxHitPoints": 25,
+      "temporaryHitPoints": null
+    }
+  }
+}
+```
+
+#### Add Temporary Hit Points
+```graphql
+mutation {
+  addTemporaryHitPoints(input: {characterId: 1, roll: 6}) {
+    name
+    currentHitPoints
+    maxHitPoints
+    temporaryHitPoints
+  }
+}
+```
+
+returns:
+```json
+{
+  "data": {
+    "addTemporaryHitPoints": {
+      "name": "Briv",
+      "currentHitPoints": 18,
+      "maxHitPoints": 25,
+      "temporaryHitPoints": 6
+    }
+  }
+}
+```
+

@@ -17,6 +17,7 @@ var (
 	characterFields   = []string{"name", "max_hit_points", "current_hit_points", "level", "strength", "dexterity", "constitution", "intelligence", "wisdom", "charisma"}
 )
 
+// characterRecord is used for binding to & from the `character` table in the sqlite database.
 type characterRecord struct {
 	ID                 int `db:"character_id"`
 	Name               string
@@ -32,6 +33,7 @@ type characterRecord struct {
 	Charisma           int
 }
 
+// toModel converts a characterRecord to a gqlgen-generated *model.Character.
 func (c characterRecord) toModel() *model.Character {
 	return &model.Character{
 		ID:                 c.ID,
@@ -51,6 +53,7 @@ func (c characterRecord) toModel() *model.Character {
 	}
 }
 
+// GetCharacterByName returns a *model.Character with information by performing a select based on the provided name.
 func (a *App) GetCharacterByName(name string) (*model.Character, error) {
 	var record characterRecord
 	sess := a.db.NewSession(nil)
@@ -65,6 +68,8 @@ func (a *App) GetCharacterByName(name string) (*model.Character, error) {
 	return nil, UnexpectedDBError
 }
 
+// InsertCharacter creates a new character record from a *model.Character.
+// If the character has nil stats, it is rejected and not inserted.
 func (a *App) InsertCharacter(char *model.Character) (*model.Character, error) {
 	if char == nil || char.Stats == nil {
 		return nil, InvalidCharError
@@ -90,6 +95,7 @@ func (a *App) InsertCharacter(char *model.Character) (*model.Character, error) {
 	return record.toModel(), nil
 }
 
+// GetCharacterByID selects a character from the database by character_id and converts it to a *model.Character.
 func (a *App) GetCharacterByID(id int) (*model.Character, error) {
 	var record characterRecord
 	sess := a.db.NewSession(nil)
@@ -107,6 +113,7 @@ func (a *App) GetCharacterByID(id int) (*model.Character, error) {
 	return nil, UnexpectedDBError
 }
 
+// UpdateHitPoints will update the character's current_hit_points to a new value.
 func (a *App) UpdateHitPoints(id int, newHitPoints int) error {
 	sess := a.db.NewSession(nil)
 	_, err := sess.Update(characterTable).Set("current_hit_points", newHitPoints).Where("character_id = ?", id).Exec()
@@ -117,6 +124,7 @@ func (a *App) UpdateHitPoints(id int, newHitPoints int) error {
 	return nil
 }
 
+// UpdateTemporaryHitPoints will update a character's temporary_hit_points to a new value or nil.
 func (a *App) UpdateTemporaryHitPoints(id int, newTempHitPoints *int) error {
 	sess := a.db.NewSession(nil)
 	_, err := sess.Update(characterTable).Set("temporary_hit_points", newTempHitPoints).Where("character_id = ?", id).Exec()
@@ -128,6 +136,8 @@ func (a *App) UpdateTemporaryHitPoints(id int, newTempHitPoints *int) error {
 	return nil
 }
 
+// nullInt64ToPtr converts a dbr.NullInt64 type to a *int.
+// If the provided value is 0, it returns nil.
 func nullInt64ToPtr(i dbr.NullInt64) *int {
 	if i.Valid && i.Int64 != 0 {
 		out := int(i.Int64)
