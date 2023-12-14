@@ -86,6 +86,7 @@ func (r *mutationResolver) HealCharacter(ctx context.Context, input model.HealIn
 		return nil, err
 	}
 
+	// you can't have more than your maximum hit points
 	newHitPoints := char.CurrentHitPoints + input.Roll
 	if newHitPoints > char.MaxHitPoints {
 		newHitPoints = char.MaxHitPoints
@@ -110,8 +111,8 @@ func (r *mutationResolver) AddTemporaryHitPoints(ctx context.Context, input mode
 		return nil, err
 	}
 
+	// if the character already has higher temporary hit points, no action needed
 	if char.TemporaryHitPoints != nil && *char.TemporaryHitPoints > input.Roll {
-		// current temporary hit points are higher, no action required
 		return char, nil
 	}
 
