@@ -63,6 +63,7 @@ input HealInput {
 
 type Query {
   character(id: ID!): Character
+  characterByName(name: String!): Character
 }
 
 type Mutation {

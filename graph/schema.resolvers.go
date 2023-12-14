@@ -142,6 +142,21 @@ func (r *queryResolver) Character(ctx context.Context, id int) (*model.Character
 	return char, nil
 }
 
+// CharacterByName is the resolver for the characterByName field.
+func (r *queryResolver) CharacterByName(ctx context.Context, name string) (*model.Character, error) {
+	char, err := r.app.GetCharacterByName(name)
+	if err != nil {
+		return nil, err
+	}
+	defenses, err := r.app.GetCharacterDefenses(char.ID)
+	if err != nil {
+		return nil, err
+	}
+
+	char.Defenses = defenses
+	return char, nil
+}
+
 // Mutation returns generated.MutationResolver implementation.
 func (r *Resolver) Mutation() generated.MutationResolver { return &mutationResolver{r} }
 
