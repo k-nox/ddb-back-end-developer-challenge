@@ -11,6 +11,7 @@ import (
 
 var UnexpectedDBError = errors.New("unexpected database error")
 
+// applyMigrations uses takes in a directory path containing sql migration files and a *sql.DB instance, and applies any new migrations.
 func applyMigrations(dir string, db *sql.DB) error {
 	migrations := &migrate.FileMigrationSource{
 		Dir: dir,
@@ -27,6 +28,7 @@ func applyMigrations(dir string, db *sql.DB) error {
 	return nil
 }
 
+// openDB will open a new sqlite db at the provided dsn.
 func openDB(dsn string) (*dbr.Connection, error) {
 	conn, err := dbr.Open("sqlite3", dsn, nil)
 	if err != nil {
@@ -36,6 +38,7 @@ func openDB(dsn string) (*dbr.Connection, error) {
 	return conn, nil
 }
 
+// CloseDB will close the app's sqlite database.
 func (a *App) CloseDB() {
 	err := a.db.Close()
 	if err != nil {

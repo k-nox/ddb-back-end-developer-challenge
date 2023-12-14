@@ -11,6 +11,7 @@ import (
 
 var StartupError = errors.New("error with app startup")
 
+// parseJsonCharacter will open json file at the path provided and parse it into a character model.
 func parseJsonCharacter(jsonFilePath string) (*model.Character, error) {
 	jsonFile, err := os.Open(jsonFilePath)
 	if err != nil {
@@ -38,11 +39,13 @@ func parseJsonCharacter(jsonFilePath string) (*model.Character, error) {
 		return nil, StartupError
 	}
 
+	// since we are just encountering this character, current and max hit points should be the same
 	char.CurrentHitPoints = char.MaxHitPoints
 
 	return &char, nil
 }
 
+// Startup parses the starting character and inserts them & their defenses into the appropriate tables.
 func (a *App) Startup(startingCharPath string) error {
 	char, err := parseJsonCharacter(startingCharPath)
 	if err != nil {
